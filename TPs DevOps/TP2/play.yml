@@ -1,0 +1,55 @@
+---
+- name: Déploiement d'un serveur web avec Apache
+  hosts: all
+  become: yes
+  tasks:
+    - name: Installer Git
+      apt:
+        name: git
+        state: latest
+
+    - name: Installer Apache
+      apt:
+        name: apache2
+        state: latest
+
+    - name: Changer le port d'écoute d'Apache
+      lineinfile:
+        path: /etc/apache2/ports.conf
+        regexp: '^Listen 80'
+        line: Listen 8080
+      notify: redémarrer apache
+
+    - name: Changer le port dans le VirtualHost
+      lineinfile:
+        path: /etc/apache2/sites-available/000-default.conf
+        regexp: '<VirtualHost \*:80>'
+        line: '<VirtualHost *:8080>'
+      notify: redémarrer apache
+
+    - name: Supprimer le site web par défaut
+      file:
+        path: /var/www/html
+        state: absent
+
+    - name: Déployer le site web statique depuis GitHub
+      git:
+        repo: 'https://github.com/cloudacademy/static-website-example'
+        dest: /var/www/html
+
+    - name: Assurer que le dossier /var/www/html existe
+      file:
+        path: /var/www/html
+        state: directory
+
+    - name: Redémarrer Apache
+      service:
+        name: apache2
+        state: restarted
+
+  handlers:
+    - name: redémarrer apache
+      service:
+        name: apache2
+        state: restarted
+
